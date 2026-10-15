@@ -1,12 +1,15 @@
 package tech.scryme.app.ui.schedule
 
-import tech.scryme.app.ui.components.MemberDropdown
-import tech.scryme.app.domain.model.UserProfile
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,12 +20,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tech.scryme.app.domain.model.ShiftTrade
 import tech.scryme.app.domain.model.StaffShift
+import tech.scryme.app.domain.model.UserProfile
+import tech.scryme.app.ui.components.MemberDropdown
 import tech.scryme.app.ui.components.StyledFormDialog
-import tech.scryme.app.ui.components.DatePickerTextField
+import tech.scryme.app.ui.theme.Amber500
 import tech.scryme.app.ui.theme.Emerald500
 import tech.scryme.app.ui.theme.Rose500
-
-
 
 @Composable
 fun ScheduleScreen(
@@ -32,6 +35,7 @@ fun ScheduleScreen(
     var showTradeDialog by remember { mutableStateOf<StaffShift?>(null) }
     var showBreakDialog by remember { mutableStateOf<StaffShift?>(null) }
     var showCreateShiftDialog by remember { mutableStateOf(false) }
+    var shiftToAssess by remember { mutableStateOf<StaffShift?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadSchedule()
@@ -138,10 +142,12 @@ fun ScheduleScreen(
                     0 -> MyShiftsList(
                         shifts = state.myShifts,
                         onRequestTrade = { showTradeDialog = it },
-                        onAddBreak = { showBreakDialog = it }
+                        onAddBreak = { showBreakDialog = it },
+                        onAssessShift = { shiftToAssess = it }
                     )
                     1 -> TeamRosterList(
-                        shifts = state.teamShifts
+                        shifts = state.teamShifts,
+                        onAssessShift = { shiftToAssess = it }
                     )
                     2 -> ShiftTradesList(
                         trades = state.trades,
@@ -186,13 +192,32 @@ fun ScheduleScreen(
             }
         )
     }
+
+    shiftToAssess?.let { shift ->
+        ShiftAssessmentDialog(
+            shift = shift,
+            onDismiss = { shiftToAssess = null },
+            onSubmit = { rating, punctuality, notes ->
+                viewModel.saveShiftAssessment(
+                    shiftId = shift.id,
+                    ratingScore = rating,
+                    attendancePunctuality = punctuality,
+                    shiftNotes = notes.ifBlank { null },
+                    onSuccess = {
+                        shiftToAssess = null
+                    }
+                )
+            }
+        )
+    }
 }
 
 @Composable
 fun MyShiftsList(
     shifts: List<StaffShift>,
     onRequestTrade: (StaffShift) -> Unit,
-    onAddBreak: (StaffShift) -> Unit
+    onAddBreak: (StaffShift) -> Unit,
+    onAssessShift: (StaffShift) -> Unit
 ) {
     if (shifts.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -204,7 +229,8 @@ fun MyShiftsList(
                 ShiftCard(
                     shift = shift,
                     onRequestTrade = { onRequestTrade(shift) },
-                    onAddBreak = { onAddBreak(shift) }
+                    onAddBreak = { onAddBreak(shift) },
+                    onAssessShift = { onAssessShift(shift) }
                 )
             }
         }
@@ -212,7 +238,10 @@ fun MyShiftsList(
 }
 
 @Composable
-fun TeamRosterList(shifts: List<StaffShift>) {
+fun TeamRosterList(
+    shifts: List<StaffShift>,
+    onAssessShift: (StaffShift) -> Unit
+) {
     if (shifts.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No team shifts found", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -220,7 +249,7 @@ fun TeamRosterList(shifts: List<StaffShift>) {
     } else {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(shifts, key = { it.id }) { shift ->
-                TeamShiftCard(shift = shift)
+                TeamShiftCard(shift = shift, onAssessShift = { onAssessShift(shift) })
             }
         }
     }
@@ -248,9 +277,11 @@ fun ShiftTradesList(
 fun ShiftCard(
     shift: StaffShift,
     onRequestTrade: () -> Unit,
-    onAddBreak: () -> Unit
+    onAddBreak: () -> Unit,
+    onAssessShift: () -> Unit
 ) {
     val dayName = getDayName(shift.dayOfWeek)
+    val assessment = shift.assessment
 
     Card(
         modifier = Modifier
@@ -314,13 +345,70 @@ fun ShiftCard(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Shift Assessment Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (assessment != null) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Shift Review: ",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            repeat(5) { index ->
+                                Icon(
+                                    imageVector = if (index < assessment.ratingScore) Icons.Filled.Star else Icons.Outlined.Star,
+                                    contentDescription = null,
+                                    tint = Amber500,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Punctuality: ${assessment.attendancePunctuality}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "No shift assessment recorded",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onAssessShift,
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (assessment != null) "Edit Review" else "Assess Shift",
+                        fontSize = 11.sp
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun TeamShiftCard(shift: StaffShift) {
+fun TeamShiftCard(
+    shift: StaffShift,
+    onAssessShift: () -> Unit
+) {
     val dayName = getDayName(shift.dayOfWeek)
+    val assessment = shift.assessment
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -328,16 +416,31 @@ fun TeamShiftCard(shift: StaffShift) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = "Member: ${shift.memberId.take(8)}... - $dayName",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Shift Time: ${shift.startTime} - ${shift.endTime}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Member: ${shift.memberId.take(8)}... - $dayName",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Shift Time: ${shift.startTime} - ${shift.endTime}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onAssessShift,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(if (assessment != null) "Rating: ${assessment.ratingScore}★" else "Assess", fontSize = 11.sp)
+                }
+            }
         }
     }
 }
@@ -549,6 +652,87 @@ fun CreateShiftDialog(
     }
 }
 
+@Composable
+fun ShiftAssessmentDialog(
+    shift: StaffShift,
+    onDismiss: () -> Unit,
+    onSubmit: (
+        ratingScore: Int,
+        attendancePunctuality: String,
+        notes: String
+    ) -> Unit
+) {
+    val existing = shift.assessment
+    var ratingScore by remember { mutableStateOf(existing?.ratingScore ?: 5) }
+    var attendancePunctuality by remember { mutableStateOf(existing?.attendancePunctuality ?: "ON_TIME") }
+    var shiftNotes by remember { mutableStateOf(existing?.shiftNotes ?: "") }
+
+    StyledFormDialog(
+        title = "Shift Assessment & Performance Review",
+        onDismissRequest = onDismiss,
+        confirmButtonText = "Save Shift Assessment",
+        onConfirm = {
+            onSubmit(ratingScore, attendancePunctuality, shiftNotes)
+        }
+    ) {
+        Text(
+            text = "Shift on ${getDayName(shift.dayOfWeek)} (${shift.startTime} - ${shift.endTime})",
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text("Shift Performance Rating:", style = MaterialTheme.typography.labelMedium)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            (1..5).forEach { star ->
+                Icon(
+                    imageVector = if (star <= ratingScore) Icons.Filled.Star else Icons.Outlined.Star,
+                    contentDescription = "Star $star",
+                    tint = Amber500,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable { ratingScore = star }
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("$ratingScore / 5 Stars", style = MaterialTheme.typography.bodySmall)
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text("Attendance & Punctuality:", style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("ON_TIME", "LATE", "EARLY_LEAVE", "ABSENT").forEach { status ->
+                FilterChip(
+                    selected = attendancePunctuality == status,
+                    onClick = { attendancePunctuality = status },
+                    label = { Text(status.replace("_", " "), fontSize = 10.sp) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = shiftNotes,
+            onValueChange = { shiftNotes = it },
+            label = { Text("Shift Performance Notes & Audit Feedback") },
+            placeholder = { Text("e.g. Excellent teamwork, completed all store duties.") },
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
 private fun getDayName(dayOfWeek: Int): String {
     return when (dayOfWeek) {
         1 -> "Monday"
@@ -561,7 +745,6 @@ private fun getDayName(dayOfWeek: Int): String {
         else -> "Day $dayOfWeek"
     }
 }
-
 
 @Composable
 fun AttendanceStatusCard(
@@ -671,7 +854,7 @@ fun CheckInAttendanceDialog(
     var latitudeText by remember { mutableStateOf("40.7128") }
     var longitudeText by remember { mutableStateOf("-74.0060") }
 
-        StyledFormDialog(
+    StyledFormDialog(
         title = "Member Check-In",
         onDismissRequest = onDismiss,
         confirmButtonText = "Check In",

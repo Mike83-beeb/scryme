@@ -8,7 +8,8 @@ data class StaffShift(
     val endTime: String,
     val breaks: List<ShiftBreak> = emptyList(),
     val locationId: String? = null,
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+    val assessment: ShiftAssessment? = null
 )
 
 data class ShiftBreak(
@@ -35,5 +36,31 @@ data class StaffTask(
     val status: String,
     val priority: String? = "MEDIUM",
     val assignedMemberId: String? = null,
-    val dueDate: String? = null
+    val dueDate: String? = null,
+    val estimatedHours: Double? = null,
+    val actualHours: Double? = null,
+    val assessment: TaskAssessment? = null
+)
+
+data class TaskAssessment(
+    val id: String? = null,
+    val taskId: String,
+    val qualityScore: Int = 5,
+    val complexity: String = "MEDIUM",
+    val riskLevel: String = "LOW",
+    val estimatedHours: Double? = null,
+    val actualHours: Double? = null,
+    val notes: String? = null,
+    val createdAt: String? = null
+)
+
+data class ShiftAssessment(
+    val id: String? = null,
+    val shiftId: String,
+    val memberId: String? = null,
+    val ratingScore: Int = 5,
+    val attendancePunctuality: String = "ON_TIME",
+    val shiftNotes: String? = null,
+    val verifiedBy: String? = null,
+    val createdAt: String? = null
 )

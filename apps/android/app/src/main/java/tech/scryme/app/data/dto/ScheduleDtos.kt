@@ -10,7 +10,8 @@ data class StaffShiftDto(
     @SerializedName("endTime") val endTime: String, // HH:mm
     @SerializedName("breaks") val breaks: List<ShiftBreakDto> = emptyList(),
     @SerializedName("locationId") val locationId: String? = null,
-    @SerializedName("isActive") val isActive: Boolean = true
+    @SerializedName("isActive") val isActive: Boolean = true,
+    @SerializedName("assessment") val assessment: ShiftAssessmentDto? = null
 )
 
 data class ShiftBreakDto(
@@ -53,7 +54,10 @@ data class StaffTaskDto(
     @SerializedName("status") val status: String, // TODO, IN_PROGRESS, COMPLETED, CANCELLED
     @SerializedName("priority") val priority: String? = "MEDIUM",
     @SerializedName("assignedMemberId") val assignedMemberId: String? = null,
-    @SerializedName("dueDate") val dueDate: String? = null
+    @SerializedName("dueDate") val dueDate: String? = null,
+    @SerializedName("estimatedHours") val estimatedHours: Double? = null,
+    @SerializedName("actualHours") val actualHours: Double? = null,
+    @SerializedName("assessment") val assessment: TaskAssessmentDto? = null
 )
 
 data class CreateStaffTaskDto(
@@ -61,14 +65,58 @@ data class CreateStaffTaskDto(
     @SerializedName("description") val description: String? = null,
     @SerializedName("assignedMemberId") val assignedMemberId: String? = null,
     @SerializedName("priority") val priority: String? = "MEDIUM",
-    @SerializedName("dueDate") val dueDate: String? = null
+    @SerializedName("dueDate") val dueDate: String? = null,
+    @SerializedName("estimatedHours") val estimatedHours: Double? = null
 )
 
 data class UpdateStaffTaskDto(
     @SerializedName("status") val status: String? = null,
     @SerializedName("title") val title: String? = null,
     @SerializedName("description") val description: String? = null,
-    @SerializedName("dueDate") val dueDate: String? = null
+    @SerializedName("dueDate") val dueDate: String? = null,
+    @SerializedName("estimatedHours") val estimatedHours: Double? = null,
+    @SerializedName("actualHours") val actualHours: Double? = null
+)
+
+data class TaskAssessmentDto(
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("taskId") val taskId: String,
+    @SerializedName("qualityScore") val qualityScore: Int = 5,
+    @SerializedName("complexity") val complexity: String = "MEDIUM",
+    @SerializedName("riskLevel") val riskLevel: String = "LOW",
+    @SerializedName("estimatedHours") val estimatedHours: Double? = null,
+    @SerializedName("actualHours") val actualHours: Double? = null,
+    @SerializedName("notes") val notes: String? = null,
+    @SerializedName("createdAt") val createdAt: String? = null
+)
+
+data class CreateTaskAssessmentDto(
+    @SerializedName("taskId") val taskId: String,
+    @SerializedName("qualityScore") val qualityScore: Int,
+    @SerializedName("complexity") val complexity: String,
+    @SerializedName("riskLevel") val riskLevel: String,
+    @SerializedName("estimatedHours") val estimatedHours: Double? = null,
+    @SerializedName("actualHours") val actualHours: Double? = null,
+    @SerializedName("notes") val notes: String? = null
+)
+
+data class ShiftAssessmentDto(
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("shiftId") val shiftId: String,
+    @SerializedName("memberId") val memberId: String? = null,
+    @SerializedName("ratingScore") val ratingScore: Int = 5,
+    @SerializedName("attendancePunctuality") val attendancePunctuality: String = "ON_TIME",
+    @SerializedName("shiftNotes") val shiftNotes: String? = null,
+    @SerializedName("verifiedBy") val verifiedBy: String? = null,
+    @SerializedName("createdAt") val createdAt: String? = null
+)
+
+data class CreateShiftAssessmentDto(
+    @SerializedName("shiftId") val shiftId: String,
+    @SerializedName("ratingScore") val ratingScore: Int,
+    @SerializedName("attendancePunctuality") val attendancePunctuality: String,
+    @SerializedName("shiftNotes") val shiftNotes: String? = null,
+    @SerializedName("verifiedBy") val verifiedBy: String? = null
 )
 
 data class CheckInAttendanceRequestDto(

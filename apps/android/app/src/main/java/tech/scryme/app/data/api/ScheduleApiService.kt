@@ -61,6 +61,28 @@ interface ScheduleApiService {
         @Body dto: UpdateStaffTaskDto
     ): Response<V3ApiResponse<StaffTaskDto>>
 
+    @POST("android/shifts/tasks/{taskId}/assessment")
+    suspend fun saveTaskAssessment(
+        @Path("taskId") taskId: String,
+        @Body dto: CreateTaskAssessmentDto
+    ): Response<V3ApiResponse<TaskAssessmentDto>>
+
+    @GET("android/shifts/tasks/{taskId}/assessment")
+    suspend fun getTaskAssessment(
+        @Path("taskId") taskId: String
+    ): Response<V3ApiResponse<TaskAssessmentDto>>
+
+    @POST("android/shifts/{shiftId}/assessment")
+    suspend fun saveShiftAssessment(
+        @Path("shiftId") shiftId: String,
+        @Body dto: CreateShiftAssessmentDto
+    ): Response<V3ApiResponse<ShiftAssessmentDto>>
+
+    @GET("android/shifts/{shiftId}/assessment")
+    suspend fun getShiftAssessment(
+        @Path("shiftId") shiftId: String
+    ): Response<V3ApiResponse<ShiftAssessmentDto>>
+
     @GET("{orgSlug}/members/attendance/me/status")
     suspend fun getMyAttendanceStatus(
         @Path("orgSlug") orgSlug: String
