@@ -140,4 +140,49 @@ class TasksViewModel @Inject constructor(
             )
         }
     }
+
+    fun saveTaskAssessment(
+        taskId: String,
+        qualityScore: Int,
+        complexity: String,
+        riskLevel: String,
+        estimatedHours: Double?,
+        actualHours: Double?,
+        notes: String?,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val orgSlug = sessionManager.getOrgSlug()
+            if (orgSlug.isNullOrEmpty()) {
+                onError("Session missing organization context")
+                return@launch
+            }
+            val result = scheduleRepository.saveTaskAssessment(
+                orgSlug = orgSlug,
+                taskId = taskId,
+                qualityScore = qualityScore,
+                complexity = complexity,
+                riskLevel = riskLevel,
+                estimatedHours = estimatedHours,
+                actualHours = actualHours,
+                notes = notes
+            )
+            result.fold(
+                onSuccess = {
+                    NotificationHelper.showTaskNotification(
+                        context,
+                        "Task Assessment Saved",
+                        "Quality: $qualityScore/5 Stars | Risk: $riskLevel"
+                    )
+                    onSuccess()
+                    val currentFilter = (_uiState.value as? TasksUiState.Success)?.selectedFilter ?: "ALL"
+                    loadTasks(currentFilter)
+                },
+                onFailure = { error ->
+                    onError(error.message ?: "Failed to save task assessment")
+                }
+            )
+        }
+    }
 }
