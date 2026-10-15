@@ -1,5 +1,7 @@
 package tech.scryme.app.ui.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,11 +9,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
@@ -19,12 +22,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import tech.scryme.app.ui.theme.Emerald500
 import tech.scryme.app.ui.theme.Rose500
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
@@ -32,6 +39,13 @@ fun ProfileScreen(
     onLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { viewModel.updateAvatarFromUri(context, it) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadProfile()
@@ -90,6 +104,7 @@ fun ProfileScreen(
             }
             is ProfileUiState.Success -> {
                 val profile = state.profile
+                val preferences = state.preferences
 
                 // Profile Header Card
                 item {
@@ -104,19 +119,52 @@ fun ProfileScreen(
                                 .padding(20.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            // Avatar Container with Image Selection Trigger
                             Box(
                                 modifier = Modifier
-                                    .size(72.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
+                                    .size(90.dp)
+                                    .clickable { imagePickerLauncher.launch("image/*") },
+                                contentAlignment = Alignment.BottomEnd
                             ) {
-                                Text(
-                                    text = profile.name.take(1).uppercase(),
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (!profile.avatarUrl.isNullOrBlank()) {
+                                        AsyncImage(
+                                            model = profile.avatarUrl,
+                                            contentDescription = "Profile Avatar",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Text(
+                                            text = profile.name.take(1).uppercase(),
+                                            fontSize = 32.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    modifier = Modifier.size(28.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shadowElevation = 2.dp
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.CameraAlt,
+                                            contentDescription = "Update Avatar",
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(12.dp))
@@ -147,6 +195,28 @@ fun ProfileScreen(
                                 }
                             }
 
+                            profile.phone?.let { phone ->
+                                if (phone.isNotBlank()) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Phone,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = phone,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
                             Surface(
                                 modifier = Modifier.padding(top = 8.dp),
                                 color = MaterialTheme.colorScheme.secondaryContainer,
@@ -170,6 +240,40 @@ fun ProfileScreen(
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedButton(
+                                onClick = { viewModel.setEditing(true) },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp).padding(end = 4.dp)
+                                )
+                                Text("Edit Profile Fields")
+                            }
+
+                            if (state.isUpdating) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                                    Text("Updating profile...", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+
+                            state.updateError?.let { err ->
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = err,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
                     }
@@ -215,6 +319,91 @@ fun ProfileScreen(
                     }
                 }
 
+                // User Preferences Card (Direct Integration)
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "App Preferences",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            // Theme Mode Selection
+                            Text("Theme Mode", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(
+                                    "SYSTEM" to "System",
+                                    "LIGHT" to "Light",
+                                    "DARK" to "Dark"
+                                ).forEach { (mode, label) ->
+                                    val isSelected = preferences.themeMode == mode
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = { viewModel.setThemeMode(mode) },
+                                        label = { Text(label) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                            // Notification Switches
+                            Text("Notification Settings", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Enable Push Notifications", style = MaterialTheme.typography.bodySmall)
+                                Switch(
+                                    checked = preferences.notificationsEnabled,
+                                    onCheckedChange = { viewModel.setNotificationsEnabled(it) }
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Shift & Schedule Alerts", style = MaterialTheme.typography.bodySmall)
+                                Switch(
+                                    checked = preferences.shiftNotifications && preferences.notificationsEnabled,
+                                    enabled = preferences.notificationsEnabled,
+                                    onCheckedChange = { viewModel.setShiftNotifications(it) }
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Task Assignment Alerts", style = MaterialTheme.typography.bodySmall)
+                                Switch(
+                                    checked = preferences.taskNotifications && preferences.notificationsEnabled,
+                                    enabled = preferences.notificationsEnabled,
+                                    onCheckedChange = { viewModel.setTaskNotifications(it) }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Settings Navigation Option Card
                 item {
                     Card(
@@ -252,12 +441,12 @@ fun ProfileScreen(
 
                                 Column {
                                     Text(
-                                        text = "Settings",
+                                        text = "Advanced Hardware & POS Settings",
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "App theme, notifications & hardware pairing",
+                                        text = "Terminal pairing & hardware configuration",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -270,6 +459,21 @@ fun ProfileScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                }
+
+                // Edit Profile Dialog
+                if (state.isEditing) {
+                    item {
+                        EditProfileDialog(
+                            initialName = profile.name,
+                            initialEmail = profile.email ?: "",
+                            initialPhone = profile.phone ?: "",
+                            onDismiss = { viewModel.setEditing(false) },
+                            onConfirm = { name, email, phone ->
+                                viewModel.updateProfile(name = name, email = email, phone = phone)
+                            }
+                        )
                     }
                 }
 
@@ -298,4 +502,61 @@ fun ProfileScreen(
             }
         }
     }
+}
+
+@Composable
+fun EditProfileDialog(
+    initialName: String,
+    initialEmail: String,
+    initialPhone: String,
+    onDismiss: () -> Unit,
+    onConfirm: (name: String, email: String, phone: String) -> Unit
+) {
+    var name by remember { mutableStateOf(initialName) }
+    var email by remember { mutableStateOf(initialEmail) }
+    var phone by remember { mutableStateOf(initialPhone) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit User Profile") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Full Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email Address") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("Phone Number") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(name, email, phone)
+                }
+            ) {
+                Text("Save Changes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

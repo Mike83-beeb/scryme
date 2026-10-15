@@ -82,6 +82,11 @@ export class AndroidUpdateMemberDto {
   @IsOptional()
   name?: string;
 
+  @ApiPropertyOptional({ description: "Updated email address" })
+  @IsString()
+  @IsOptional()
+  email?: string;
+
   @ApiPropertyOptional({ description: "Updated phone number" })
   @IsString()
   @IsOptional()
@@ -91,6 +96,11 @@ export class AndroidUpdateMemberDto {
   @IsString()
   @IsOptional()
   role?: string;
+
+  @ApiPropertyOptional({ description: "Updated avatar image URL or data URI" })
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
 }
 
 export class AndroidCreateShiftDto {
