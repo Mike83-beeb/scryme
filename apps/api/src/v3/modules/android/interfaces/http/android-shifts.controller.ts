@@ -28,6 +28,8 @@ import {
   AndroidProcessShiftTradeDto,
   AndroidCreateTaskDto,
   AndroidUpdateTaskDto,
+  AndroidTaskAssessmentDto,
+  AndroidShiftAssessmentDto,
 } from "../../application/dto/android-auth.dto";
 
 @ApiTags("V3 Android Shifts")
@@ -141,5 +143,41 @@ export class AndroidShiftsController {
     @Body() dto: AndroidUpdateTaskDto,
   ) {
     return this.androidShiftsUseCase.updateStaffTask(req.v3Context, id, dto);
+  }
+
+  @Post("tasks/:taskId/assessment")
+  @ApiOperation({ summary: "Save task assessment on Android" })
+  @ApiResponse({ status: 201, description: "Task assessment saved" })
+  async saveTaskAssessment(
+    @Req() req: any,
+    @Param("taskId") taskId: string,
+    @Body() dto: AndroidTaskAssessmentDto,
+  ) {
+    return this.androidShiftsUseCase.saveTaskAssessment(req.v3Context, taskId, dto);
+  }
+
+  @Get("tasks/:taskId/assessment")
+  @ApiOperation({ summary: "Get task assessment on Android" })
+  @ApiResponse({ status: 200, description: "Task assessment retrieved" })
+  async getTaskAssessment(@Req() req: any, @Param("taskId") taskId: string) {
+    return this.androidShiftsUseCase.getTaskAssessment(req.v3Context, taskId);
+  }
+
+  @Post(":shiftId/assessment")
+  @ApiOperation({ summary: "Save shift assessment on Android" })
+  @ApiResponse({ status: 201, description: "Shift assessment saved" })
+  async saveShiftAssessment(
+    @Req() req: any,
+    @Param("shiftId") shiftId: string,
+    @Body() dto: AndroidShiftAssessmentDto,
+  ) {
+    return this.androidShiftsUseCase.saveShiftAssessment(req.v3Context, shiftId, dto);
+  }
+
+  @Get(":shiftId/assessment")
+  @ApiOperation({ summary: "Get shift assessment on Android" })
+  @ApiResponse({ status: 200, description: "Shift assessment retrieved" })
+  async getShiftAssessment(@Req() req: any, @Param("shiftId") shiftId: string) {
+    return this.androidShiftsUseCase.getShiftAssessment(req.v3Context, shiftId);
   }
 }

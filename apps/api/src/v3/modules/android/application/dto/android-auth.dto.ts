@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsDateString, IsEnum } from "class-validator";
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class AndroidEmailLoginDto {
@@ -218,6 +218,65 @@ export class AndroidUpdateTaskDto {
   @IsString()
   @IsOptional()
   priority?: string;
+}
+
+export class AndroidTaskAssessmentDto {
+  @ApiProperty({ description: "Task ID" })
+  @IsString()
+  @IsNotEmpty()
+  taskId: string;
+
+  @ApiProperty({ description: "Quality Score (1-5)" })
+  @IsNumber()
+  qualityScore: number;
+
+  @ApiProperty({ description: "Complexity rating (LOW, MEDIUM, HIGH)" })
+  @IsString()
+  complexity: string;
+
+  @ApiProperty({ description: "Risk Level (LOW, MEDIUM, HIGH)" })
+  @IsString()
+  riskLevel: string;
+
+  @ApiPropertyOptional({ description: "Estimated completion hours" })
+  @IsNumber()
+  @IsOptional()
+  estimatedHours?: number;
+
+  @ApiPropertyOptional({ description: "Actual completion hours" })
+  @IsNumber()
+  @IsOptional()
+  actualHours?: number;
+
+  @ApiPropertyOptional({ description: "Assessment & retrospective notes" })
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
+
+export class AndroidShiftAssessmentDto {
+  @ApiProperty({ description: "Shift ID" })
+  @IsString()
+  @IsNotEmpty()
+  shiftId: string;
+
+  @ApiProperty({ description: "Shift performance rating score (1-5)" })
+  @IsNumber()
+  ratingScore: number;
+
+  @ApiProperty({ description: "Punctuality: ON_TIME, LATE, ABSENT, EARLY_LEAVE" })
+  @IsString()
+  attendancePunctuality: string;
+
+  @ApiPropertyOptional({ description: "Shift assessment notes" })
+  @IsString()
+  @IsOptional()
+  shiftNotes?: string;
+
+  @ApiPropertyOptional({ description: "Verified by member ID or name" })
+  @IsString()
+  @IsOptional()
+  verifiedBy?: string;
 }
 
 export class AndroidPosPairDto {

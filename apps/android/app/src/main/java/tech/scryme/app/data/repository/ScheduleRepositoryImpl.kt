@@ -207,6 +207,94 @@ class ScheduleRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun saveTaskAssessment(
+        orgSlug: String,
+        taskId: String,
+        qualityScore: Int,
+        complexity: String,
+        riskLevel: String,
+        estimatedHours: Double?,
+        actualHours: Double?,
+        notes: String?
+    ): Result<TaskAssessment> {
+        return try {
+            val dto = CreateTaskAssessmentDto(
+                taskId = taskId,
+                qualityScore = qualityScore,
+                complexity = complexity,
+                riskLevel = riskLevel,
+                estimatedHours = estimatedHours,
+                actualHours = actualHours,
+                notes = notes
+            )
+            val res = scheduleApiService.saveTaskAssessment(taskId, dto)
+            if (res.isSuccessful && res.body()?.success == true) {
+                val assessment = res.body()?.data?.toDomain() ?: return Result.failure(Exception("Null response"))
+                Result.success(assessment)
+            } else {
+                Result.failure(Exception(res.body()?.error?.message ?: res.message()))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getTaskAssessment(orgSlug: String, taskId: String): Result<TaskAssessment> {
+        return try {
+            val res = scheduleApiService.getTaskAssessment(taskId)
+            if (res.isSuccessful && res.body()?.success == true) {
+                val assessment = res.body()?.data?.toDomain() ?: return Result.failure(Exception("Null response"))
+                Result.success(assessment)
+            } else {
+                Result.failure(Exception(res.body()?.error?.message ?: res.message()))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveShiftAssessment(
+        orgSlug: String,
+        shiftId: String,
+        ratingScore: Int,
+        attendancePunctuality: String,
+        shiftNotes: String?,
+        verifiedBy: String?
+    ): Result<ShiftAssessment> {
+        return try {
+            val dto = CreateShiftAssessmentDto(
+                shiftId = shiftId,
+                ratingScore = ratingScore,
+                attendancePunctuality = attendancePunctuality,
+                shiftNotes = shiftNotes,
+                verifiedBy = verifiedBy
+            )
+            val res = scheduleApiService.saveShiftAssessment(shiftId, dto)
+            if (res.isSuccessful && res.body()?.success == true) {
+                val assessment = res.body()?.data?.toDomain() ?: return Result.failure(Exception("Null response"))
+                Result.success(assessment)
+            } else {
+                Result.failure(Exception(res.body()?.error?.message ?: res.message()))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getShiftAssessment(orgSlug: String, shiftId: String): Result<ShiftAssessment> {
+        return try {
+            val res = scheduleApiService.getShiftAssessment(shiftId)
+            if (res.isSuccessful && res.body()?.success == true) {
+                val assessment = res.body()?.data?.toDomain() ?: return Result.failure(Exception("Null response"))
+                Result.success(assessment)
+            } else {
+                Result.failure(Exception(res.body()?.error?.message ?: res.message()))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getMyAttendanceStatus(orgSlug: String): Result<AttendanceStatusDto> {
         return try {
             val res = scheduleApiService.getMyAttendanceStatus(orgSlug)
@@ -278,7 +366,8 @@ class ScheduleRepositoryImpl @Inject constructor(
         endTime = endTime,
         breaks = breaks.map { ShiftBreak(it.id, it.startTime, it.endTime, it.description) },
         locationId = locationId,
-        isActive = isActive
+        isActive = isActive,
+        assessment = assessment?.toDomain()
     )
 
     private fun ShiftTradeDto.toDomain() = ShiftTrade(
@@ -298,6 +387,32 @@ class ScheduleRepositoryImpl @Inject constructor(
         status = status,
         priority = priority,
         assignedMemberId = assignedMemberId,
-        dueDate = dueDate
+        dueDate = dueDate,
+        estimatedHours = estimatedHours,
+        actualHours = actualHours,
+        assessment = assessment?.toDomain()
+    )
+
+    private fun TaskAssessmentDto.toDomain() = TaskAssessment(
+        id = id,
+        taskId = taskId,
+        qualityScore = qualityScore,
+        complexity = complexity,
+        riskLevel = riskLevel,
+        estimatedHours = estimatedHours,
+        actualHours = actualHours,
+        notes = notes,
+        createdAt = createdAt
+    )
+
+    private fun ShiftAssessmentDto.toDomain() = ShiftAssessment(
+        id = id,
+        shiftId = shiftId,
+        memberId = memberId,
+        ratingScore = ratingScore,
+        attendancePunctuality = attendancePunctuality,
+        shiftNotes = shiftNotes,
+        verifiedBy = verifiedBy,
+        createdAt = createdAt
     )
 }

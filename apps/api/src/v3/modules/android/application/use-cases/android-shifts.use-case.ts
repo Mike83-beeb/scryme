@@ -8,11 +8,16 @@ import {
   AndroidProcessShiftTradeDto,
   AndroidCreateTaskDto,
   AndroidUpdateTaskDto,
+  AndroidTaskAssessmentDto,
+  AndroidShiftAssessmentDto,
 } from "../dto/android-auth.dto";
 
 @Injectable()
 export class AndroidShiftsUseCase {
   constructor(private readonly prisma: PrismaService) {}
+
+  private taskAssessmentStore: Map<string, any> = new Map();
+  private shiftAssessmentStore: Map<string, any> = new Map();
 
   async getCurrentMemberShifts(v3Context: any) {
     const { organizationId, memberId } = v3Context;
@@ -48,6 +53,7 @@ export class AndroidShiftsUseCase {
         startTime: b.startTime,
         endTime: b.endTime,
       })),
+      assessment: this.shiftAssessmentStore.get(s.id) || null,
     }));
   }
 
@@ -90,6 +96,7 @@ export class AndroidShiftsUseCase {
         startTime: b.startTime,
         endTime: b.endTime,
       })),
+      assessment: this.shiftAssessmentStore.get(s.id) || null,
     }));
   }
 
@@ -147,6 +154,7 @@ export class AndroidShiftsUseCase {
       role: shift.roleTags?.[0] || "STAFF",
       notes: dto.notes || "",
       breaks: [],
+      assessment: null,
     };
   }
 
@@ -294,6 +302,9 @@ export class AndroidShiftsUseCase {
       dueDate: t.dueDate ? t.dueDate.toISOString() : null,
       assignedMemberId: t.memberId,
       assignedMemberName: t.member?.user?.name || null,
+      estimatedHours: null,
+      actualHours: null,
+      assessment: this.taskAssessmentStore.get(t.id) || null,
     }));
   }
 
@@ -320,6 +331,9 @@ export class AndroidShiftsUseCase {
       priority: task.priority,
       dueDate: task.dueDate ? task.dueDate.toISOString() : null,
       assignedMemberId: task.memberId,
+      estimatedHours: null,
+      actualHours: null,
+      assessment: null,
     };
   }
 
@@ -350,6 +364,67 @@ export class AndroidShiftsUseCase {
       description: updated.description || "",
       status: updated.status,
       priority: updated.priority,
+      assessment: this.taskAssessmentStore.get(id) || null,
     };
+  }
+
+  async saveTaskAssessment(v3Context: any, taskId: string, dto: AndroidTaskAssessmentDto) {
+    const assessment = {
+      id: `task-asm-${Date.now()}`,
+      taskId,
+      qualityScore: dto.qualityScore,
+      complexity: dto.complexity || "MEDIUM",
+      riskLevel: dto.riskLevel || "LOW",
+      estimatedHours: dto.estimatedHours || null,
+      actualHours: dto.actualHours || null,
+      notes: dto.notes || "",
+      createdAt: new Date().toISOString(),
+    };
+    this.taskAssessmentStore.set(taskId, assessment);
+    return assessment;
+  }
+
+  async getTaskAssessment(v3Context: any, taskId: string) {
+    const assessment = this.taskAssessmentStore.get(taskId);
+    if (!assessment) {
+      return {
+        id: null,
+        taskId,
+        qualityScore: 5,
+        complexity: "MEDIUM",
+        riskLevel: "LOW",
+        notes: null,
+      };
+    }
+    return assessment;
+  }
+
+  async saveShiftAssessment(v3Context: any, shiftId: string, dto: AndroidShiftAssessmentDto) {
+    const assessment = {
+      id: `shift-asm-${Date.now()}`,
+      shiftId,
+      memberId: v3Context.memberId || null,
+      ratingScore: dto.ratingScore,
+      attendancePunctuality: dto.attendancePunctuality || "ON_TIME",
+      shiftNotes: dto.shiftNotes || "",
+      verifiedBy: dto.verifiedBy || "Manager",
+      createdAt: new Date().toISOString(),
+    };
+    this.shiftAssessmentStore.set(shiftId, assessment);
+    return assessment;
+  }
+
+  async getShiftAssessment(v3Context: any, shiftId: string) {
+    const assessment = this.shiftAssessmentStore.get(shiftId);
+    if (!assessment) {
+      return {
+        id: null,
+        shiftId,
+        ratingScore: 5,
+        attendancePunctuality: "ON_TIME",
+        shiftNotes: null,
+      };
+    }
+    return assessment;
   }
 }

@@ -245,4 +245,39 @@ class ScheduleViewModel @Inject constructor(
             )
         }
     }
+
+    fun saveShiftAssessment(
+        shiftId: String,
+        ratingScore: Int,
+        attendancePunctuality: String,
+        shiftNotes: String?,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val orgSlug = sessionManager.getOrgSlug() ?: return@launch
+            val result = scheduleRepository.saveShiftAssessment(
+                orgSlug = orgSlug,
+                shiftId = shiftId,
+                ratingScore = ratingScore,
+                attendancePunctuality = attendancePunctuality,
+                shiftNotes = shiftNotes
+            )
+            result.fold(
+                onSuccess = {
+                    NotificationHelper.showScheduleNotification(
+                        context,
+                        "Shift Assessment Saved",
+                        "Performance Rating: $ratingScore/5 Stars"
+                    )
+                    onSuccess()
+                    val currentTab = (_uiState.value as? ScheduleUiState.Success)?.selectedTab ?: 0
+                    loadSchedule(currentTab)
+                },
+                onFailure = { error ->
+                    onError(error.message ?: "Failed to save shift assessment")
+                }
+            )
+        }
+    }
 }

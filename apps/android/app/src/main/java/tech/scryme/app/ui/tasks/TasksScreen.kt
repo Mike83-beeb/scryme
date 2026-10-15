@@ -1,41 +1,17 @@
 package tech.scryme.app.ui.tasks
 
-import tech.scryme.app.ui.components.MemberDropdown
-import tech.scryme.app.domain.model.UserProfile
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,13 +20,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tech.scryme.app.domain.model.StaffTask
+import tech.scryme.app.domain.model.UserProfile
 import tech.scryme.app.ui.components.DatePickerTextField
+import tech.scryme.app.ui.components.MemberDropdown
 import tech.scryme.app.ui.components.StyledFormDialog
 import tech.scryme.app.ui.theme.Amber500
 import tech.scryme.app.ui.theme.Emerald500
 import tech.scryme.app.ui.theme.Rose500
-
-
 
 @Composable
 fun TasksScreen(
@@ -63,10 +39,12 @@ fun TasksScreen(
     }
 
     var showCreateTaskDialog by remember { mutableStateOf(false) }
+    var taskToAssess by remember { mutableStateOf<StaffTask?>(null) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Row(
@@ -75,7 +53,7 @@ fun TasksScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "My Operational Tasks",
+                text = "Operational Tasks",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -132,6 +110,9 @@ fun TasksScreen(
                                 task = task,
                                 onToggleStatus = { newStatus ->
                                     viewModel.updateTaskStatus(task, newStatus)
+                                },
+                                onAssessTask = {
+                                    taskToAssess = task
                                 }
                             )
                         }
@@ -156,6 +137,205 @@ fun TasksScreen(
                         }
                     )
                 }
+            )
+        }
+
+        taskToAssess?.let { task ->
+            TaskAssessmentDialog(
+                task = task,
+                onDismiss = { taskToAssess = null },
+                onSubmit = { quality, complexity, risk, estHours, actHours, notes ->
+                    viewModel.saveTaskAssessment(
+                        taskId = task.id,
+                        qualityScore = quality,
+                        complexity = complexity,
+                        riskLevel = risk,
+                        estimatedHours = estHours,
+                        actualHours = actHours,
+                        notes = notes.ifBlank { null },
+                        onSuccess = {
+                            taskToAssess = null
+                        }
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun TaskItemCard(
+    task: StaffTask,
+    onToggleStatus: (String) -> Unit,
+    onAssessTask: () -> Unit
+) {
+    val isCompleted = task.status == "COMPLETED"
+    val priorityColor = when (task.priority?.uppercase()) {
+        "HIGH", "URGENT" -> Rose500
+        "MEDIUM" -> Amber500
+        else -> Emerald500
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(priorityColor)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = task.title,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    if (!task.description.isNullOrEmpty()) {
+                        Text(
+                            text = task.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (!task.dueDate.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Due: ${task.dueDate}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = {
+                        val nextStatus = when (task.status) {
+                            "TODO" -> "IN_PROGRESS"
+                            "IN_PROGRESS" -> "COMPLETED"
+                            else -> "TODO"
+                        }
+                        onToggleStatus(nextStatus)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isCompleted) Emerald500 else MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = when (task.status) {
+                            "TODO" -> "Start"
+                            "IN_PROGRESS" -> "Complete"
+                            else -> "Done ✓"
+                        },
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Task Assessment Banner / Action Row
+            val assessment = task.assessment
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (assessment != null) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Assessment: ",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            repeat(5) { index ->
+                                Icon(
+                                    imageVector = if (index < assessment.qualityScore) Icons.Filled.Star else Icons.Outlined.Star,
+                                    contentDescription = null,
+                                    tint = Amber500,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Risk: ${assessment.riskLevel} · Complexity: ${assessment.complexity}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "No formal assessment recorded yet",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onAssessTask,
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (assessment != null) "Edit Assessment" else "Assess Task",
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FilterChipRow(
+    selectedFilter: String,
+    onSelectFilter: (String) -> Unit
+) {
+    val filters = listOf("ALL", "TODO", "IN_PROGRESS", "COMPLETED")
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        filters.forEach { filter ->
+            val isSelected = filter == selectedFilter
+            FilterChip(
+                selected = isSelected,
+                onClick = { onSelectFilter(filter) },
+                label = { Text(filter) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     }
@@ -237,7 +417,7 @@ fun CreateTaskDialog(
         DatePickerTextField(
             value = dueDate,
             onValueChange = { dueDate = it },
-            label = { "Due Date" }(),
+            label = "Due Date",
             placeholder = "Select due date",
             modifier = Modifier.fillMaxWidth()
         )
@@ -245,120 +425,134 @@ fun CreateTaskDialog(
 }
 
 @Composable
-fun FilterChipRow(
-    selectedFilter: String,
-    onSelectFilter: (String) -> Unit
-) {
-    val filters = listOf("ALL", "TODO", "IN_PROGRESS", "COMPLETED")
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        filters.forEach { filter ->
-            val isSelected = filter == selectedFilter
-            FilterChip(
-                selected = isSelected,
-                onClick = { onSelectFilter(filter) },
-                label = { Text(filter) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
-    }
-}
-
-@Composable
-fun TaskItemCard(
+fun TaskAssessmentDialog(
     task: StaffTask,
-    onToggleStatus: (String) -> Unit
+    onDismiss: () -> Unit,
+    onSubmit: (
+        qualityScore: Int,
+        complexity: String,
+        riskLevel: String,
+        estimatedHours: Double?,
+        actualHours: Double?,
+        notes: String
+    ) -> Unit
 ) {
-    val isCompleted = task.status == "COMPLETED"
-    val priorityColor = when (task.priority?.uppercase()) {
-        "HIGH" -> Rose500
-        "MEDIUM" -> Amber500
-        else -> Emerald500
-    }
+    val existing = task.assessment
+    var qualityScore by remember { mutableStateOf(existing?.qualityScore ?: 5) }
+    var complexity by remember { mutableStateOf(existing?.complexity ?: "MEDIUM") }
+    var riskLevel by remember { mutableStateOf(existing?.riskLevel ?: "LOW") }
+    var estimatedHoursText by remember { mutableStateOf(existing?.estimatedHours?.toString() ?: "") }
+    var actualHoursText by remember { mutableStateOf(existing?.actualHours?.toString() ?: "") }
+    var notes by remember { mutableStateOf(existing?.notes ?: "") }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp)),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    StyledFormDialog(
+        title = "Task Assessment & Review",
+        onDismissRequest = onDismiss,
+        confirmButtonText = "Save Assessment",
+        onConfirm = {
+            val estHours = estimatedHoursText.toDoubleOrNull()
+            val actHours = actualHoursText.toDoubleOrNull()
+            onSubmit(qualityScore, complexity, riskLevel, estHours, actHours, notes)
+        }
     ) {
+        Text(
+            text = "Task: ${task.title}",
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Quality Score Rating
+        Text("Quality Score:", style = MaterialTheme.typography.labelMedium)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(priorityColor)
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
+            (1..5).forEach { star ->
+                Icon(
+                    imageVector = if (star <= qualityScore) Icons.Filled.Star else Icons.Outlined.Star,
+                    contentDescription = "Star $star",
+                    tint = Amber500,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable { qualityScore = star }
                 )
-
-                if (!task.description.isNullOrEmpty()) {
-                    Text(
-                        text = task.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                if (!task.dueDate.isNullOrEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Due: ${task.dueDate}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
             }
-
             Spacer(modifier = Modifier.width(8.dp))
+            Text("$qualityScore / 5 Stars", style = MaterialTheme.typography.bodySmall)
+        }
 
-            Button(
-                onClick = {
-                    val nextStatus = when (task.status) {
-                        "TODO" -> "IN_PROGRESS"
-                        "IN_PROGRESS" -> "COMPLETED"
-                        else -> "TODO"
-                    }
-                    onToggleStatus(nextStatus)
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCompleted) Emerald500 else MaterialTheme.colorScheme.primary
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = when (task.status) {
-                        "TODO" -> "Start"
-                        "IN_PROGRESS" -> "Complete"
-                        else -> "Done ✓"
-                    },
-                    fontSize = 12.sp
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Complexity
+        Text("Complexity Level:", style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("LOW", "MEDIUM", "HIGH").forEach { level ->
+                FilterChip(
+                    selected = complexity == level,
+                    onClick = { complexity = level },
+                    label = { Text(level, fontSize = 11.sp) }
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Risk Level
+        Text("Risk Level:", style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("LOW", "MEDIUM", "HIGH").forEach { level ->
+                FilterChip(
+                    selected = riskLevel == level,
+                    onClick = { riskLevel = level },
+                    label = { Text(level, fontSize = 11.sp) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = estimatedHoursText,
+                onValueChange = { estimatedHoursText = it },
+                label = { Text("Est. Hours") },
+                placeholder = { Text("e.g. 4.0") },
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                ),
+                modifier = Modifier.weight(1f)
+            )
+
+            OutlinedTextField(
+                value = actualHoursText,
+                onValueChange = { actualHoursText = it },
+                label = { Text("Actual Hours") },
+                placeholder = { Text("e.g. 3.5") },
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                ),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        OutlinedTextField(
+            value = notes,
+            onValueChange = { notes = it },
+            label = { Text("Assessment Notes & Retrospective") },
+            placeholder = { Text("e.g. Delivered on schedule, high code quality.") },
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
