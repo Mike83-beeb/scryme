@@ -32,6 +32,7 @@ class SessionManager @Inject constructor(
         val MEMBER_ID = stringPreferencesKey("member_id")
         val USER_NAME = stringPreferencesKey("user_name")
         val USER_EMAIL = stringPreferencesKey("user_email")
+        val USER_AVATAR_URL = stringPreferencesKey("user_avatar_url")
         val THEME_MODE = stringPreferencesKey("theme_mode") // "SYSTEM", "LIGHT", "DARK"
         val DUTY_STATUS = stringPreferencesKey("duty_status") // "ONLINE", "BUSY", "OFFLINE"
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
@@ -50,6 +51,7 @@ class SessionManager @Inject constructor(
     val memberIdFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[MEMBER_ID] }
     val userNameFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[USER_NAME] }
     val userEmailFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[USER_EMAIL] }
+    val userAvatarUrlFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[USER_AVATAR_URL] }
     val themeModeFlow: Flow<String> = context.dataStore.data.map { prefs -> prefs[THEME_MODE] ?: "SYSTEM" }
     val dutyStatusFlow: Flow<String> = context.dataStore.data.map { prefs -> prefs[DUTY_STATUS] ?: "ONLINE" }
     val notificationsEnabledFlow: Flow<Boolean> = context.dataStore.data.map { prefs -> prefs[NOTIFICATIONS_ENABLED] ?: true }
@@ -109,6 +111,14 @@ class SessionManager @Inject constructor(
     suspend fun updateDutyStatus(status: String) {
         context.dataStore.edit { prefs ->
             prefs[DUTY_STATUS] = status
+        }
+    }
+
+    suspend fun updateUserProfile(name: String? = null, email: String? = null, avatarUrl: String? = null) {
+        context.dataStore.edit { prefs ->
+            if (name != null) prefs[USER_NAME] = name
+            if (email != null) prefs[USER_EMAIL] = email
+            if (avatarUrl != null) prefs[USER_AVATAR_URL] = avatarUrl
         }
     }
 

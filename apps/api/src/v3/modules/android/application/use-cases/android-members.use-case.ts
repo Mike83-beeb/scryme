@@ -114,10 +114,15 @@ export class AndroidMembersUseCase {
       });
     }
 
-    if (dto.name && member.userId) {
+    if ((dto.name || dto.email || dto.avatarUrl) && member.userId) {
+      const userData: any = {};
+      if (dto.name) userData.name = dto.name;
+      if (dto.email) userData.email = dto.email;
+      if (dto.avatarUrl) userData.image = dto.avatarUrl;
+
       await this.prisma.client.user.update({
         where: { id: member.userId },
-        data: { name: dto.name },
+        data: userData,
       });
     }
 
